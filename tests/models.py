@@ -6,7 +6,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from modelcluster.contrib.taggit import ClusterTaggableManager
 from taggit.models import TaggedItemBase
 
-from modelcluster.fields import ParentalKey
+from modelcluster.fields import ParentalKey, M2MField
 from modelcluster.models import ClusterableModel
 
 
@@ -107,3 +107,28 @@ class Log(ClusterableModel):
 
     def __str__(self):
         return "[%s] %s" % (self.time.isoformat(), self.data)
+
+
+@python_2_unicode_compatible
+class Article(ClusterableModel):
+    title = models.CharField(max_length=255)
+    authors = M2MField('Author', related_name="articles_by_author")
+    categories = M2MField('Category', related_name="articles_by_category")
+
+    def __str__(self):
+        return self.title
+
+
+@python_2_unicode_compatible
+class Author(models.Model):
+    name = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.name
+
+@python_2_unicode_compatible
+class Category(models.Model):
+    name = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.name

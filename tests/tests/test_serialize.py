@@ -6,7 +6,8 @@ import datetime
 from django.test import TestCase
 from django.utils import timezone
 
-from tests.models import Band, BandMember, Album, Restaurant, Dish, MenuItem, Chef, Wine, Review, Log
+from tests.models import Band, BandMember, Album, Restaurant, Dish, MenuItem, Chef, Wine, Review, Log, \
+    Article, Author, Category
 
 
 class SerializeTest(TestCase):
@@ -47,6 +48,26 @@ class SerializeTest(TestCase):
         self.assertEqual('The Beatles', beatles.name)
         self.assertEqual(2, beatles.members.count())
         self.assertEqual(BandMember, beatles.members.all()[0].__class__)
+        article = Article.from_serializable_data({
+            'pk': 1,
+            'title': 'Article 1 Title',
+            'authors': [{
+                'pk': None,
+                'name': 'Author 1'
+            }],
+            'categories': [{
+                'pk': None,
+                'name': 'Category 2'
+            }, {
+                'pk': None,
+                'name': 'Category 3'
+            }]
+        })
+        self.assertEqual(1, article.id)
+        self.assertEqual('Article 1 Title', article.title)
+        self.assertEqual(1, article.authors.count())
+        self.assertEqual(2, article.categories.count())
+        self.assertEqual(Category, article.categories.all()[0].__class__)
 
     def test_deserialize_json(self):
         beatles = Band.from_json('{"pk": 9, "albums": [], "name": "The Beatles", "members": [{"pk": null, "name": "John Lennon", "band": null}, {"pk": null, "name": "Paul McCartney", "band": null}]}')

@@ -78,7 +78,7 @@ def model_from_serializable_data(model, data, check_fks=True, strict_fks=False):
                 continue
 
         if field.rel and isinstance(field.rel, models.ManyToManyRel):
-            raise Exception('m2m relations not supported yet')
+            pass
         elif field.rel and isinstance(field.rel, models.ManyToOneRel):
             if field_value is None:
                 kwargs[field.attname] = None
@@ -145,6 +145,10 @@ def get_all_child_relations(model):
         except AttributeError:
             pass
 
+        for field in model._meta.get_fields():
+            if field.many_to_many == True and not field in relations:
+                relations.append(field)
+
         model._meta._child_relations_cache = relations
         return relations
 
@@ -198,7 +202,10 @@ class ClusterableModel(models.Model):
         super(ClusterableModel, self).save(update_fields=real_update_fields, **kwargs)
 
         for relation in relations_to_commit:
-            getattr(self, relation).commit()
+            try:
+                getattr(self, relation).commit()
+            except AttributeError:
+                pass
 
     def serializable_data(self):
         obj = get_serializable_data_for_fields(self)
