@@ -535,4 +535,6 @@ class M2MField(ManyToManyField):
         return searchable_content
 
     def value_from_object(self, obj):
-        return getattr(obj, self.attname).get_live_queryset()
+        qs = getattr(obj, self.attname).get_queryset()
+        qs._result_cache = None
+        return qs
