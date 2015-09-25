@@ -446,7 +446,7 @@ def create_deferring_many_related_manager(related, original_manager_cls):
             live_items = list(original_manager.get_queryset())
             for item in live_items:
                 if item not in final_items:
-                    item.delete()
+                    original_manager.remove(item)
 
             for item in final_items:
                 item.save()
