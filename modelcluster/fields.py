@@ -1,10 +1,18 @@
 from __future__ import unicode_literals
 
+import django
 from django.core import checks
 from django.db import models, IntegrityError, router
 from django.db.models.fields.related import ForeignKey, ForeignRelatedObjectsDescriptor, \
     ManyToManyField, ManyRelatedObjectsDescriptor, ReverseManyRelatedObjectsDescriptor
 from django.utils.functional import cached_property
+
+try:
+    from django.db.models.fields.related import ReverseManyToOneDescriptor
+except ImportError:
+    # Django 1.8 and below
+    from django.db.models.fields.related import ForeignRelatedObjectsDescriptor as ReverseManyToOneDescriptor
+
 
 from modelcluster.utils import sort_by_fields
 
@@ -93,7 +101,6 @@ def create_deferring_foreign_related_manager(related, original_manager_cls):
                 cluster_related_objects[relation_name] = object_list
 
             return object_list
-
 
         def add(self, *new_items):
             """
@@ -190,7 +197,15 @@ def create_deferring_foreign_related_manager(related, original_manager_cls):
                     item.delete()
 
             for item in final_items:
-                original_manager.add(item)
+                if django.VERSION >= (1, 9):
+                    # Django 1.9+ bulk updates items by default which assumes
+                    # that they have already been saved to the database.
+                    # Disable this behaviour.
+                    # https://code.djangoproject.com/ticket/18556
+                    # https://github.com/django/django/commit/adc0c4fbac98f9cb975e8fa8220323b2de638b46
+                    original_manager.add(item, bulk=False)
+                else:
+                    original_manager.add(item)
 
             # purge the _cluster_related_objects entry, so we switch back to live SQL
             del self.instance._cluster_related_objects[relation_name]
@@ -198,10 +213,7 @@ def create_deferring_foreign_related_manager(related, original_manager_cls):
     return DeferringRelatedManager
 
 
-class ChildObjectsDescriptor(ForeignRelatedObjectsDescriptor):
-    def __init__(self, related):
-        super(ChildObjectsDescriptor, self).__init__(related)
-
+class ChildObjectsDescriptor(ReverseManyToOneDescriptor):
     def __get__(self, instance, instance_type=None):
         if instance is None:
             return self
@@ -215,7 +227,13 @@ class ChildObjectsDescriptor(ForeignRelatedObjectsDescriptor):
 
     @cached_property
     def child_object_manager_cls(self):
-        return create_deferring_foreign_related_manager(self.related, self.related_manager_cls)
+        try:
+            rel = self.rel
+        except AttributeError:
+            # Django 1.8 and below
+            rel = self.related
+
+        return create_deferring_foreign_related_manager(rel, self.related_manager_cls)
 
 
 class ParentalKey(ForeignKey):
@@ -223,21 +241,11 @@ class ParentalKey(ForeignKey):
 
     # Django 1.8 has a check to prevent unsaved instances being assigned to
     # ForeignKeys. Disable it
+    # This check was moved to the save() method in Django 1.8.4
     allow_unsaved_instance_assignment = True
 
-    # prior to https://github.com/django/django/commit/fa2e1371cda1e72d82b4133ad0b49a18e43ba411
-    # ForeignRelatedObjectsDescriptor is hard-coded in contribute_to_related_class -
-    # so we need to patch in that change to look up related_accessor_class instead
     def contribute_to_related_class(self, cls, related):
-        # Internal FK's - i.e., those with a related name ending with '+' -
-        # and swapped models don't get a related descriptor.
-        related_model = get_related_model(related)
-        if not self.rel.is_hidden() and not related_model._meta.swapped:
-            setattr(cls, related.get_accessor_name(), self.related_accessor_class(related))
-            if self.rel.limit_choices_to:
-                cls._meta.related_fkey_lookups.append(self.rel.limit_choices_to)
-        if self.rel.field_name is None:
-            self.rel.field_name = cls._meta.pk.name
+        super(ParentalKey, self).contribute_to_related_class(cls, related)
 
         # store this as a child field in meta. NB child_relations only contains relations
         # defined to this specific model, not its superclasses

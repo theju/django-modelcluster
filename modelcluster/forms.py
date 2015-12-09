@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from six import with_metaclass
+from django.utils.six import with_metaclass
 
 import django
 from django.forms.models import (
@@ -94,55 +94,17 @@ class BaseChildFormSet(BaseTransientModelFormSet):
 
         return saved_instances
 
-    # Prior to Django 1.7, objects are deleted from the database even when commit=False:
-    # https://code.djangoproject.com/ticket/10284
-    # This was fixed in https://github.com/django/django/commit/65e03a424e82e157b4513cdebb500891f5c78363
-    # We rely on the fixed behaviour here, so until 1.7 ships we need to override save_existing_objects
-    # with a patched version.
-    def save_existing_objects(self, commit=True):
-        self.changed_objects = []
-        self.deleted_objects = []
-        if not self.initial_forms:
-            return []
-
-        saved_instances = []
-        try:
-            forms_to_delete = self.deleted_forms
-        except AttributeError:
-            forms_to_delete = []
-        for form in self.initial_forms:
-            pk_name = self._pk_field.name
-            raw_pk_value = form._raw_value(pk_name)
-
-            # clean() for different types of PK fields can sometimes return
-            # the model instance, and sometimes the PK. Handle either.
-            pk_value = form.fields[pk_name].clean(raw_pk_value)
-            pk_value = getattr(pk_value, 'pk', pk_value)
-
-            obj = self._existing_object(pk_value)
-            if form in forms_to_delete:
-                self.deleted_objects.append(obj)
-                # === BEGIN PATCH ===
-                if commit:
-                    obj.delete()
-                # === END PATCH ===
-                continue
-            if form.has_changed():
-                self.changed_objects.append((obj, form.changed_data))
-                saved_instances.append(self.save_existing(form, obj, commit=commit))
-                if not commit:
-                    self.saved_forms.append(form)
-        return saved_instances
 
 def childformset_factory(parent_model, model, form=ModelForm,
     formset=BaseChildFormSet, fk_name=None, fields=None, exclude=None,
-    extra=3, can_order=False, can_delete=True, max_num=None,
-    formfield_callback=None, widgets=None):
+    extra=3, can_order=False, can_delete=True, max_num=None, validate_max=False,
+    formfield_callback=None, widgets=None, min_num=None, validate_min=False):
 
     fk = _get_foreign_key(parent_model, model, fk_name=fk_name)
     # enforce a max_num=1 when the foreign key to the parent model is unique.
     if fk.unique:
         max_num = 1
+        validate_max = True
 
     if exclude is None:
         exclude = []
@@ -160,7 +122,10 @@ def childformset_factory(parent_model, model, form=ModelForm,
         'fields': fields,
         'exclude': exclude,
         'max_num': max_num,
+        'validate_max': validate_max,
         'widgets': widgets,
+        'min_num': min_num,
+        'validate_min': validate_min,
     }
     FormSet = transientmodelformset_factory(model, **kwargs)
     FormSet.fk = fk

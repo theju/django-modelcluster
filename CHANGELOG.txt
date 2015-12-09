@@ -1,10 +1,17 @@
 Changelog
 =========
 
-1.0.0 (xx.xx.20xx)
-~~~~~~~~~~~~~~~~~~
+1.1 (xx.xx.20xx) - IN DEVELOPMENT
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* Django 1.9 compatibility
+* Added exclude() method to FakeQuerySet
+* Removed dependency on the 'six' package, in favour of Django's built-in version
+
+1.0 (09.10.2015)
+~~~~~~~~~~~~~~~~
 * Removed Django 1.6 and Python 2.6 support
 * Added system check to ensure that ParentalKey points to a ClusterableModel
+* Added validate_max, min_num and validate_min parameters to childformset_factory
 
 0.6.2 (13.04.2015)
 ~~~~~~~~~~~~~~~~~~
