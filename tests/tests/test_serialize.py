@@ -7,7 +7,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.utils import timezone
 
-from tests.models import Band, BandMember, Album, Restaurant, Dish, MenuItem, Chef, Wine, Review, Log, Document
+from tests.models import Band, BandMember, Album, Restaurant, Dish, MenuItem, Chef, Wine, \
+    Review, Log, Document, Article, Author, Category
 
 
 class SerializeTest(TestCase):
@@ -48,6 +49,23 @@ class SerializeTest(TestCase):
         self.assertEqual('The Beatles', beatles.name)
         self.assertEqual(2, beatles.members.count())
         self.assertEqual(BandMember, beatles.members.all()[0].__class__)
+
+        for ii in range(1, 6):
+            Author.objects.create(name="Author " + str(ii))
+            Category.objects.create(name="Category " + str(ii))
+
+        article = Article.from_serializable_data({
+            'pk': 1,
+            'title': 'Article Title 1',
+            'authors': [1, 2],
+            'categories': [2, 3, 4]
+        })
+        self.assertEqual(article.id, 1)
+        self.assertEqual(article.title, 'Article Title 1')
+        self.assertEqual(article.authors.count(), 2)
+        self.assertEqual([author.name for author in article.authors.all()],
+                         ['Author 1', 'Author 2'])
+        self.assertEqual(article.categories.count(), 3)
 
     def test_deserialize_json(self):
         beatles = Band.from_json('{"pk": 9, "albums": [], "name": "The Beatles", "members": [{"pk": null, "name": "John Lennon", "band": null}, {"pk": null, "name": "Paul McCartney", "band": null}]}')
