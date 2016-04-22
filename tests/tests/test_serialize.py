@@ -50,15 +50,17 @@ class SerializeTest(TestCase):
         self.assertEqual(2, beatles.members.count())
         self.assertEqual(BandMember, beatles.members.all()[0].__class__)
 
+        authors = {}
+        categories = {}
         for ii in range(1, 6):
-            Author.objects.create(name="Author " + str(ii))
-            Category.objects.create(name="Category " + str(ii))
+            authors[ii] = Author.objects.create(name="Author " + str(ii))
+            categories[ii] = Category.objects.create(name="Category " + str(ii))
 
         article = Article.from_serializable_data({
             'pk': 1,
             'title': 'Article Title 1',
-            'authors': [1, 2],
-            'categories': [2, 3, 4]
+            'authors': [authors[1].pk, authors[2].pk],
+            'categories': [categories[2].pk, categories[3].pk, categories[4].pk]
         })
         self.assertEqual(article.id, 1)
         self.assertEqual(article.title, 'Article Title 1')
