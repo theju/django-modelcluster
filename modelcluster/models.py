@@ -134,7 +134,7 @@ def get_all_child_relations(model):
             pass
 
         for field in model._meta.get_fields():
-            if field.many_to_many == True and not field in relations:
+            if field.many_to_many and field not in relations:
                 relations.append(field)
 
         model._meta._child_relations_cache = relations

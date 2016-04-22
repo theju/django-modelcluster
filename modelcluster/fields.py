@@ -363,7 +363,8 @@ def create_deferring_many_related_manager(related, original_manager_cls):
         def add(self, *new_items):
             items = self.get_object_list()
 
-            items_match = lambda item, target: (item is target) or (item.pk == target.pk and item.pk is not None)
+            def items_match(item, target):
+                return (item is target) or (item.pk == target.pk and item.pk is not None)
 
             for target in new_items:
                 item_matched = False
@@ -383,7 +384,8 @@ def create_deferring_many_related_manager(related, original_manager_cls):
         def remove(self, *items_to_remove):
             items = self.get_object_list()
 
-            items_match = lambda item, target: (item is target) or (item.pk == target.pk and item.pk is not None)
+            def items_match(item, target):
+                return (item is target) or (item.pk == target.pk and item.pk is not None)
 
             for target in items_to_remove:
                 items[:] = [item for item in items if not items_match(item, target)]
@@ -413,7 +415,7 @@ def create_deferring_many_related_manager(related, original_manager_cls):
                 return
 
             kwargs = {"instance": self.instance}
-            if django.VERSION < (1,9):
+            if django.VERSION < (1, 9):
                 kwargs.update({
                     "model": rel_field.rel.to,
                     "query_field_name": rel_field.related_query_name(),
