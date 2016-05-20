@@ -206,7 +206,18 @@ class ClusterableModel(models.Model):
             if hasattr(rel.related_model, 'serializable_data'):
                 obj[rel_name] = [child.serializable_data() for child in children]
             else:
-                obj[rel_name] = [get_serializable_data_for_fields(child) for child in children]
+                if rel.many_to_many:
+                    pk_values = []
+                    for child in children:
+                        pk_field = child._meta.pk
+                        # If model is a child via multitable inheritance, use parent's pk
+                        while pk_field.rel and pk_field.rel.parent_link:
+                            pk_field = pk_field.rel.to._meta.pk
+
+                        pk_values.append(get_field_value(pk_field, child))
+                    obj[rel_name] = pk_values
+                else:
+                    obj[rel_name] = [get_serializable_data_for_fields(child) for child in children]
 
         return obj
 
