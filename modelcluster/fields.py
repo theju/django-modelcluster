@@ -317,16 +317,15 @@ def create_deferring_many_related_manager(related, original_manager_cls):
                     "prefetch_cache_name": rel_field.name
                 })
             try:
-                results = original_manager_cls(**kwargs).get_queryset()
+                return original_manager_cls(**kwargs).get_queryset()
             except ValueError:
-                results = []
-            return results
+                return FakeQuerySet(related.related_model, [])
 
         def get_queryset(self):
             try:
                 results = self.instance._cluster_related_objects[relation_name]
             except (AttributeError, KeyError):
-                results = self.get_live_queryset()
+                return self.get_live_queryset()
 
             return FakeQuerySet(related.related_model, results)
 
